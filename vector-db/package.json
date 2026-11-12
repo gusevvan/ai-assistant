@@ -1,0 +1,14 @@
+{
+  "name": "opencode-vector-db",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Qdrant-backed search service for the OpenCode web assistant",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "check": "node --check src/server.js && node --check src/embed.js"
+  }
+}
