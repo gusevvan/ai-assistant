@@ -337,3 +337,5 @@ docker compose exec web curl -s -X POST http://vector-db:8080/search \
 # 5. Остановить
 docker compose -f compose.yaml -f compose.mock.yaml down -v
 ```
+
+
