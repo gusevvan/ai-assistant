@@ -1,0 +1,27 @@
+on:
+  push:
+
+jobs:
+  docker-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build web docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./web/Dockerfile
+
+      - name: Build vector-db docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./vector-db/Dockerfile
+
+      - name: Build mock-llm docker iamge
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./mock-llm/Dockerfile
