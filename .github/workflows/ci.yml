@@ -11,17 +11,17 @@ jobs:
       - name: Build web docker image
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ./web
           file: ./web/Dockerfile
 
       - name: Build vector-db docker image
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ./vector-db
           file: ./vector-db/Dockerfile
 
       - name: Build mock-llm docker iamge
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ./mock-llm
           file: ./mock-llm/Dockerfile
