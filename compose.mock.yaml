@@ -1,0 +1,42 @@
+# Optional override: run the whole assistant with a local mock LLM.
+#
+#   docker compose -f compose.yaml -f compose.mock.yaml up -d --build
+#
+# The mock provider is OpenAI-compatible and deterministic. It exists so the
+# streaming path can be tested without a real provider key.
+
+services:
+  mock-llm:
+    build:
+      context: ./mock-llm
+    image: opencode-mock-llm:local
+    expose:
+      - "19000"
+    environment:
+      PORT: "19000"
+      MOCK_MODEL: mock-model
+      MOCK_CHUNK_DELAY_MS: "15"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:19000/healthz').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+      start_period: 5s
+    restart: unless-stopped
+
+  web:
+    environment:
+      REQUIRE_MODEL: "true"
+      OPENCODE_MODEL: mock/mock-model
+      # $$ escapes Compose interpolation; the container receives $schema.
+      OPENCODE_CONFIG_JSON: >-
+        {"$$schema":"https://opencode.ai/config.json","model":"mock/mock-model","provider":{"mock":{"npm":"@ai-sdk/openai-compatible","name":"Mock provider","options":{"baseURL":"http://mock-llm:19000/v1","apiKey":"mock"},"models":{"mock-model":{"name":"Mock Model","tool_call":true,"limit":{"context":200000,"output":8192}}}}}}
+    depends_on:
+      mock-llm:
+        condition: service_healthy
