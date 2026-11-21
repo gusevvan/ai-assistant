@@ -2,9 +2,8 @@
 /**
  * End-to-end smoke test for the running stack.
  *
- * It assumes the whole Compose stack is already up (by default it uses the
- * local mock provider, so no API key is needed) and verifies the course
- * contract:
+ * It assumes the whole Compose stack is already up (normally started with the
+ * mock provider, so no API key is needed) and verifies the course contract:
  *
  *   - `/health` returns 200 only when the service is ready;
  *   - the UI and `/live` are served through nginx;
