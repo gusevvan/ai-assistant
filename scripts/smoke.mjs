@@ -11,7 +11,7 @@
  *   - RAG contributed context, and the stream ends with `done`.
  *
  * Usage:
- *   docker compose -f compose.yaml -f compose.mock.yaml up -d --build
+ *   docker compose up -d --build
  *   node scripts/smoke.mjs
  *
  * Environment:

@@ -1,6 +1,18 @@
 name: opencode-assistant
 
+# Весь стек поднимается одной командой и БЕЗ API-ключей:
+#
+#   docker compose up -d --build
+#
+# По умолчанию отвечает локальная mock-модель (сервис mock-llm), поэтому
+# /health зелёный и чат работает сразу. Чтобы подключить реальную модель,
+# заполните .env (см. .env.example) и повторите docker compose up -d.
+#
+# Порядок готовности: qdrant -> vector-db -> web -> nginx.
+# Каждый шаг ждёт healthcheck предыдущего (depends_on: service_healthy).
+
 services:
+  # Единая точка входа: публикует порт наружу и проксирует на web.
   nginx:
     image: nginx:1.27-alpine
     ports:
@@ -11,8 +23,8 @@ services:
       web:
         condition: service_healthy
     healthcheck:
-      # Proxies /health to the web service, so nginx is "healthy" only when
-      # the whole request path is actually ready.
+      # /health проксируется в web, поэтому nginx «здоров» только когда
+      # готов весь путь запроса, а не просто запущен процесс nginx.
       test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/health"]
       interval: 5s
       timeout: 3s
@@ -20,9 +32,11 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  # Приложение: Fastify + встроенный OpenCode SDK + чат-интерфейс.
   web:
     build:
-      context: ./web
+      context: .
+      dockerfile: Dockerfile
     image: opencode-web-assistant:local
     expose:
       - "8080"
@@ -31,17 +45,22 @@ services:
       HOST: "0.0.0.0"
       WORKSPACE_DIR: /workspace
       OPENCODE_DB_PATH: /data/opencode.db
-      OPENCODE_MODEL: ${OPENCODE_MODEL:-}
-      OPENCODE_AGENT: ${OPENCODE_AGENT:-}
-      OPENCODE_CONFIG_JSON: ${OPENCODE_CONFIG_JSON:-}
       REQUIRE_MODEL: ${REQUIRE_MODEL:-true}
-      # Single-dash default: set VECTOR_DB_URL= (empty) to disable RAG.
+      # Модель из .env, а если не задана — локальный mock.
+      OPENCODE_MODEL: ${OPENCODE_MODEL:-mock/mock-model}
+      # Конфиг OpenCode: mock-провайдер зарегистрирован всегда (без ключа
+      # работает он, с ключом — модель из OPENCODE_MODEL).
+      # $$ экранирует интерполяцию Compose: контейнер получит $schema.
+      OPENCODE_CONFIG_JSON: >-
+        {"$$schema":"https://opencode.ai/config.json","model":"${OPENCODE_MODEL:-mock/mock-model}","provider":{"mock":{"npm":"@ai-sdk/openai-compatible","name":"Mock provider","options":{"baseURL":"http://mock-llm:19000/v1","apiKey":"mock"},"models":{"mock-model":{"name":"Mock Model","tool_call":true,"limit":{"context":200000,"output":8192}}}}}}
+      # Одиночный дефис: VECTOR_DB_URL= (пустое значение) выключает RAG.
       VECTOR_DB_URL: ${VECTOR_DB_URL-http://vector-db:8080}
       VECTOR_DB_COLLECTION: ${VECTOR_DB_COLLECTION:-knowledge}
       VECTOR_DB_API_KEY: ${VECTOR_DB_API_KEY:-}
       VECTOR_DB_LIMIT: ${VECTOR_DB_LIMIT:-5}
       LOG_LEVEL: ${LOG_LEVEL:-info}
-      # Provider credentials are read by OpenCode from the environment.
+      # Ключи провайдеров OpenCode читает из окружения.
+      # Они передаются через .env и не попадают в образ.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
@@ -53,6 +72,8 @@ services:
     depends_on:
       vector-db:
         condition: service_healthy
+      mock-llm:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
       interval: 5s
@@ -61,6 +82,7 @@ services:
       start_period: 30s
     restart: unless-stopped
 
+  # Search-сервис поверх Qdrant: создаёт коллекцию и загружает документы.
   vector-db:
     build:
       context: ./vector-db
@@ -94,6 +116,7 @@ services:
       start_period: 15s
     restart: unless-stopped
 
+  # Векторная база. Данные живут в томе и переживают перезапуски.
   qdrant:
     image: qdrant/qdrant:v1.15.0
     expose:
@@ -107,6 +130,34 @@ services:
       timeout: 3s
       retries: 12
       start_period: 10s
+    restart: unless-stopped
+
+  # Локальный OpenAI-совместимый mock-провайдер: детерминированные ответы
+  # без интернета и ключей. Нужен, чтобы стек был полностью рабочим сразу
+  # после docker compose up и чтобы CI мог проверить стриминг end-to-end.
+  mock-llm:
+    build:
+      context: ./mock-llm
+    image: opencode-mock-llm:local
+    expose:
+      - "19000"
+    environment:
+      PORT: "19000"
+      HOST: "0.0.0.0"
+      MOCK_MODEL: mock-model
+      MOCK_CHUNK_DELAY_MS: "15"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:19000/healthz').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
     restart: unless-stopped
 
 volumes:
