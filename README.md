@@ -4,10 +4,9 @@
 [OpenCode SDK](https://opencode.ai/docs/build/sdk), упакованный в
 multi-service Docker Compose.
 
-Внутри четыре сервиса: nginx как единая точка входа, Node.js-приложение с
-OpenCode, search-сервис и векторная база Qdrant. Ответы модели передаются
-потоком через Server-Sent Events (SSE), поэтому интерфейс работает как чат в
-ChatGPT.
+Внутри пять сервисов: nginx как единая точка входа, Node.js-приложение с
+OpenCode, search-сервис, векторная база Qdrant и локальная mock-модель.
+Ответы модели передаются потоком через Server-Sent Events (SSE).
 
 ```
                     ┌────────────────────────────────────────────┐
@@ -43,10 +42,11 @@ ChatGPT.
 | `web` | сборка `./web` | HTTP API, SSE, чат-интерфейс, встроенный OpenCode |
 | `vector-db` | сборка `./vector-db` | контракт `GET /healthz` + `POST /search` поверх Qdrant |
 | `qdrant` | `qdrant/qdrant:v1.15.0` | хранение и поиск векторов |
+| `mock-llm` | сборка `./mock-llm` | локальный OpenAI-совместимый провайдер |
 
 Порядок запуска задан через `depends_on: condition: service_healthy`:
-`qdrant → vector-db → web → nginx`. Внешний порт открывается только после
-полной готовности цепочки.
+`qdrant → vector-db → web → nginx`. Веб-сервис также ждёт `mock-llm`.
+Docker публикует порт nginx на хосте. Остальные сервисы доступны внутри сети Compose.
 
 ## Что умеет
 
@@ -145,15 +145,18 @@ OpenCode-провайдера.
 ## Запуск без ключа: mock-провайдер
 
 Для проверки всего пути «чат → OpenCode → провайдер → SSE → nginx» без
-интернета и API-ключа есть детерминированный OpenAI-совместимый mock:
+API-ключа Compose по умолчанию использует локальную модель:
 
 ```bash
-docker compose -f compose.yaml -f compose.mock.yaml up -d --build
+docker compose up -d --build
 ```
 
-`compose.mock.yaml` добавляет сервис `mock-llm` и переключает `web` на модель
-`mock/mock-model`. Mock возвращает текст, в котором видно, был ли передан
-контекст из векторной базы.
+Интерфейс откроется на <http://localhost:8080>. Чтобы занять другой порт,
+запусти `WEB_PORT=18080 docker compose up -d` и открой <http://localhost:18080>.
+
+Mock возвращает текст, в котором видно, был ли передан контекст из векторной базы.
+Если в `.env` уже настроен реальный провайдер, для прогона с mock используй
+`docker compose -f compose.yaml -f compose.mock.yaml up -d --build`.
 
 Проверка стриминга:
 
@@ -260,7 +263,7 @@ Content-Type: application/json
 | Переменная | По умолчанию | Назначение |
 | --- | --- | --- |
 | `WEB_PORT` | `8080` | порт, который публикует nginx |
-| `OPENCODE_MODEL` | — | модель в формате `provider/model` |
+| `OPENCODE_MODEL` | `mock/mock-model` в Compose | модель в формате `provider/model` |
 | `OPENCODE_AGENT` | — | агент по умолчанию |
 | `OPENCODE_CONFIG_JSON` | — | готовый `opencode.json`; заменяет сгенерированный конфиг |
 | `REQUIRE_MODEL` | `true` | требовать модель для `200 /health` |
@@ -300,8 +303,8 @@ Workflow `.github/workflows/ci.yml`:
 
 ```
 ai-assistant/
-├── compose.yaml            # nginx + web + vector-db + qdrant
-├── compose.mock.yaml       # override с локальным mock-провайдером
+├── compose.yaml            # nginx + web + vector-db + qdrant + mock-llm
+├── compose.mock.yaml       # принудительно выбирает mock-модель
 ├── .env.example
 ├── nginx/nginx.conf
 ├── web/                    # Fastify + OpenCode SDK
@@ -318,8 +321,8 @@ ai-assistant/
 ## Быстрая проверка проекта
 
 ```bash
-# 1. Полный стек без ключа
-docker compose -f compose.yaml -f compose.mock.yaml up -d --build
+# 1. Полный стек без ключа (с настройками по умолчанию)
+docker compose up -d --build
 
 # 2. Readiness
 until curl -fsS http://localhost:8080/health >/dev/null; do sleep 2; done
@@ -335,5 +338,5 @@ docker compose exec web curl -s -X POST http://vector-db:8080/search \
   -d '{"query":"Docker контейнер","limit":2}'
 
 # 5. Остановить
-docker compose -f compose.yaml -f compose.mock.yaml down -v
+docker compose down
 ```

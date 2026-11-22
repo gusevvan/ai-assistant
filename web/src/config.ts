@@ -21,6 +21,7 @@ const Environment = z.object({
   OPENCODE_CONFIG_JSON: z.string().optional(),
   /** Optional model reference, e.g. `anthropic/claude-sonnet-4-5`. */
   OPENCODE_MODEL: z.string().optional(),
+  OPENCODE_MOCK_BASE_URL: z.url().optional(),
   /** Optional default agent name. */
   OPENCODE_AGENT: z.string().optional(),
   OPENCODE_LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
@@ -49,6 +50,7 @@ export interface Config {
   readonly openCodeDbPath: string;
   readonly openCodeConfigJson?: string;
   readonly openCodeModel?: string;
+  readonly openCodeMockBaseUrl?: string;
   readonly openCodeAgent?: string;
   readonly openCodeLogLevel: "debug" | "info" | "warn" | "error";
   readonly requireModel: boolean;
@@ -74,6 +76,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     openCodeDbPath: path.resolve(parsed.OPENCODE_DB_PATH),
     openCodeConfigJson: emptyToUndefined(parsed.OPENCODE_CONFIG_JSON),
     openCodeModel: emptyToUndefined(parsed.OPENCODE_MODEL),
+    openCodeMockBaseUrl: parsed.OPENCODE_MOCK_BASE_URL,
     openCodeAgent: emptyToUndefined(parsed.OPENCODE_AGENT),
     openCodeLogLevel: parsed.OPENCODE_LOG_LEVEL,
     requireModel: parsed.REQUIRE_MODEL,
@@ -103,7 +106,25 @@ export function buildOpenCodeConfigContent(config: Config): string {
   const content: Record<string, unknown> = {
     $schema: "https://opencode.ai/config.json",
   };
-  if (config.openCodeModel) content.model = config.openCodeModel;
+  const mockModel = "mock/mock-model";
+  const model = config.openCodeModel ?? (config.openCodeMockBaseUrl ? mockModel : undefined);
+  if (model) content.model = model;
+  if (model === mockModel && config.openCodeMockBaseUrl) {
+    content.provider = {
+      mock: {
+        npm: "@ai-sdk/openai-compatible",
+        name: "Mock provider",
+        options: { baseURL: config.openCodeMockBaseUrl, apiKey: "mock" },
+        models: {
+          "mock-model": {
+            name: "Mock Model",
+            tool_call: true,
+            limit: { context: 200000, output: 8192 },
+          },
+        },
+      },
+    };
+  }
   if (config.openCodeAgent) content.default_agent = config.openCodeAgent;
 
   return JSON.stringify(content);

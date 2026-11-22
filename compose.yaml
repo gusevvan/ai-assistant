@@ -34,6 +34,7 @@ services:
       OPENCODE_MODEL: ${OPENCODE_MODEL:-}
       OPENCODE_AGENT: ${OPENCODE_AGENT:-}
       OPENCODE_CONFIG_JSON: ${OPENCODE_CONFIG_JSON:-}
+      OPENCODE_MOCK_BASE_URL: http://mock-llm:19000/v1
       REQUIRE_MODEL: ${REQUIRE_MODEL:-true}
       # Single-dash default: set VECTOR_DB_URL= (empty) to disable RAG.
       VECTOR_DB_URL: ${VECTOR_DB_URL-http://vector-db:8080}
@@ -52,6 +53,8 @@ services:
       - workspace:/workspace
     depends_on:
       vector-db:
+        condition: service_healthy
+      mock-llm:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8080/health"]
@@ -107,6 +110,30 @@ services:
       timeout: 3s
       retries: 12
       start_period: 10s
+    restart: unless-stopped
+
+  mock-llm:
+    build:
+      context: ./mock-llm
+    image: opencode-mock-llm:local
+    expose:
+      - "19000"
+    environment:
+      PORT: "19000"
+      MOCK_MODEL: mock-model
+      MOCK_CHUNK_DELAY_MS: "15"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:19000/healthz').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 6
+      start_period: 5s
     restart: unless-stopped
 
 volumes:
