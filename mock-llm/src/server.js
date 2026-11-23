@@ -3,10 +3,11 @@
  * Minimal OpenAI-compatible chat-completions server for offline tests.
  *
  * It lets the whole chat path (OpenCode -> provider -> SSE -> nginx) be tested
- * without a real API key or internet access. It is enabled only through
- * compose.mock.yaml:
+ * without a real API key or internet access. It is part of the default stack
+ * in compose.yaml and serves as the default model until a real provider is
+ * configured via .env:
  *
- *   docker compose -f compose.yaml -f compose.mock.yaml up --build
+ *   docker compose up -d --build
  *
  * The answer is deterministic: it echoes a short prefix of the last user
  * message, so tests can verify that the prompt (including RAG context) reached
