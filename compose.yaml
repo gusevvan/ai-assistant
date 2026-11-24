@@ -1,18 +1,9 @@
 name: opencode-assistant
 
-# Весь стек поднимается одной командой и БЕЗ API-ключей:
-#
-#   docker compose up -d --build
-#
-# По умолчанию отвечает локальная mock-модель (сервис mock-llm), поэтому
-# /health зелёный и чат работает сразу. Чтобы подключить реальную модель,
-# заполните .env (см. .env.example) и повторите docker compose up -d.
-#
 # Порядок готовности: qdrant -> vector-db -> web -> nginx.
 # Каждый шаг ждёт healthcheck предыдущего (depends_on: service_healthy).
 
 services:
-  # Единая точка входа: публикует порт наружу и проксирует на web.
   nginx:
     image: nginx:1.27-alpine
     ports:
@@ -35,7 +26,7 @@ services:
   # Приложение: Fastify + встроенный OpenCode SDK + чат-интерфейс.
   web:
     build:
-      context: .
+      context: ./web
       dockerfile: Dockerfile
     image: opencode-web-assistant:local
     expose:
@@ -50,7 +41,6 @@ services:
       OPENCODE_MODEL: ${OPENCODE_MODEL:-mock/mock-model}
       # Конфиг OpenCode: mock-провайдер зарегистрирован всегда (без ключа
       # работает он, с ключом — модель из OPENCODE_MODEL).
-      # $$ экранирует интерполяцию Compose: контейнер получит $schema.
       OPENCODE_CONFIG_JSON: >-
         {"$$schema":"https://opencode.ai/config.json","model":"${OPENCODE_MODEL:-mock/mock-model}","provider":{"mock":{"npm":"@ai-sdk/openai-compatible","name":"Mock provider","options":{"baseURL":"http://mock-llm:19000/v1","apiKey":"mock"},"models":{"mock-model":{"name":"Mock Model","tool_call":true,"limit":{"context":200000,"output":8192}}}}}}
       # Одиночный дефис: VECTOR_DB_URL= (пустое значение) выключает RAG.
@@ -132,9 +122,7 @@ services:
       start_period: 10s
     restart: unless-stopped
 
-  # Локальный OpenAI-совместимый mock-провайдер: детерминированные ответы
-  # без интернета и ключей. Нужен, чтобы стек был полностью рабочим сразу
-  # после docker compose up и чтобы CI мог проверить стриминг end-to-end.
+  # Локальный OpenAI-совместимый mock-провайдер: детерминированные ответы без интернета и ключей
   mock-llm:
     build:
       context: ./mock-llm

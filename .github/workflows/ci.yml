@@ -68,7 +68,7 @@ jobs:
         include:
           - service: web
             context: .
-            file: ./Dockerfile
+            file: ./web/Dockerfile
           - service: vector-db
             context: ./vector-db
             file: ./vector-db/Dockerfile
