@@ -3,9 +3,7 @@
 [![ci](https://github.com/gusevvan/ai-assistant/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gusevvan/ai-assistant/actions/workflows/ci.yml)
 
 Веб-ИИ-ассистент с RAG на встроенном [OpenCode SDK](https://opencode.ai/docs/build/sdk).
-Учебный проект: пять сервисов в Docker Compose, которые поднимаются одной
-командой и работают сразу — без API-ключей и ручной настройки. Ответы модели
-приходят потоком (SSE), поэтому интерфейс выглядит как чат в ChatGPT.
+Учебный проект: пять сервисов в Docker Compose:
 
 ```
 браузер :8080 → nginx → web (OpenCode) → vector-db → qdrant
@@ -87,12 +85,6 @@ docker compose up -d
 (`http://web:8080`, `http://vector-db:8080`, `http://qdrant:6333`).
 Данные SQLite и Qdrant живут в именованных томах и переживают перезапуски;
 `docker compose down -v` удаляет их.
-
-Образ `web` собирается из своего каталога одной командой `docker build ./web`
-(multi-stage: зависимости → компиляция TypeScript → runtime без исходников
-и dev-пакетов, непривилегированный пользователь, свой `HEALTHCHECK`).
-`.dockerignore` в каждом сервисе и корневой `.gitignore` не пускают мусор
-и секреты в образ и репозиторий.
 
 ## CI
 
