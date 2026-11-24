@@ -179,13 +179,13 @@ node scripts/smoke.mjs                    # end-to-end против поднят
 
 ```
 ai-assistant/
-├── Dockerfile              # образ web, собирается из корня: docker build .
-├── .dockerignore
 ├── compose.yaml            # nginx + web + vector-db + qdrant + mock-llm
 ├── .env.example
 ├── nginx/nginx.conf
 ├── scripts/smoke.mjs       # end-to-end smoke-тест
 ├── web/                    # Fastify + OpenCode SDK
+│   ├── Dockerfile          # образ web, собирается из этого каталога: docker build ./web
+│   ├── .dockerignore
 │   ├── src/
 │   └── public/
 ├── vector-db/              # Qdrant search service

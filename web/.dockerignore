@@ -1,5 +1,8 @@
 node_modules
 dist
+test
+coverage
+*.tsbuildinfo
 .env
 .env.*
 !.env.example

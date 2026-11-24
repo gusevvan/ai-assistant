@@ -3,9 +3,7 @@
 [![ci](https://github.com/gusevvan/ai-assistant/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/gusevvan/ai-assistant/actions/workflows/ci.yml)
 
 Веб-ИИ-ассистент с RAG на встроенном [OpenCode SDK](https://opencode.ai/docs/build/sdk).
-Учебный проект: пять сервисов в Docker Compose, которые поднимаются одной
-командой и работают сразу — без API-ключей и ручной настройки. Ответы модели
-приходят потоком (SSE), поэтому интерфейс выглядит как чат в ChatGPT.
+Учебный проект: пять сервисов в Docker Compose:
 
 ```
 браузер :8080 → nginx → web (OpenCode) → vector-db → qdrant
@@ -78,7 +76,7 @@ docker compose up -d
 | Сервис | Образ | Назначение |
 | --- | --- | --- |
 | `nginx` | `nginx:1.27-alpine` | публикует `WEB_PORT` (по умолчанию `8080`), проксирует на `web`, не буферизует SSE |
-| `web` | сборка из корневого `Dockerfile` | HTTP API, SSE, чат-интерфейс, встроенный OpenCode |
+| `web` | сборка `./web` | HTTP API, SSE, чат-интерфейс, встроенный OpenCode |
 | `vector-db` | сборка `./vector-db` | поиск по документам для RAG поверх Qdrant |
 | `qdrant` | `qdrant/qdrant:v1.15.0` | векторная база, данные в томе |
 | `mock-llm` | сборка `./mock-llm` | локальная модель по умолчанию, без ключей |
@@ -87,11 +85,6 @@ docker compose up -d
 (`http://web:8080`, `http://vector-db:8080`, `http://qdrant:6333`).
 Данные SQLite и Qdrant живут в именованных томах и переживают перезапуски;
 `docker compose down -v` удаляет их.
-
-Образ `web` собирается из корня одной командой `docker build .`
-(multi-stage: зависимости → компиляция TypeScript → runtime без исходников
-и dev-пакетов, непривилегированный пользователь, свой `HEALTHCHECK`).
-`.dockerignore` и `.gitignore` не пускают мусор и секреты в образ и репозиторий.
 
 ## CI
 

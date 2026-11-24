@@ -67,8 +67,8 @@ jobs:
       matrix:
         include:
           - service: web
-            context: .
-            file: ./Dockerfile
+            context: ./web
+            file: ./web/Dockerfile
           - service: vector-db
             context: ./vector-db
             file: ./vector-db/Dockerfile
