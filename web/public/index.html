@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>OpenCode Assistant</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">OC</div>
+          <div>
+            <div class="brand-title">OpenCode</div>
+            <div class="brand-subtitle">web assistant</div>
+          </div>
+        </div>
+
+        <button id="new-session" class="new-session" type="button">
+          <span aria-hidden="true">+</span> Новый чат
+        </button>
+
+        <nav id="session-list" class="session-list" aria-label="Чаты"></nav>
+
+        <div class="sidebar-footer">
+          <div id="health" class="health" title="Проверка готовности">
+            <span id="health-dot" class="health-dot"></span>
+            <span id="health-text">проверка…</span>
+          </div>
+          <div id="model-label" class="model-label"></div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="chat-header">
+          <div>
+            <h1 id="chat-title">Новый чат</h1>
+            <p id="chat-subtitle" class="chat-subtitle">Готов принимать сообщения</p>
+          </div>
+          <div class="header-actions">
+            <button id="stop" class="stop hidden" type="button">Остановить</button>
+          </div>
+        </header>
+
+        <div id="banner" class="banner hidden" role="status"></div>
+
+        <section id="messages" class="messages" aria-live="polite">
+          <div class="empty-state">
+            <h2>Чем помочь?</h2>
+            <p>
+              Задайте вопрос. Сервис работает на встроенном OpenCode SDK: ответ
+              приходит потоком, а история хранится в сессии.
+            </p>
+          </div>
+        </section>
+
+        <form id="composer" class="composer">
+          <textarea
+            id="input"
+            rows="1"
+            placeholder="Напишите сообщение…  (Enter — отправить, Shift+Enter — новая строка)"
+            autocomplete="off"
+          ></textarea>
+          <button id="send" type="submit">Отправить</button>
+        </form>
+      </main>
+    </div>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
